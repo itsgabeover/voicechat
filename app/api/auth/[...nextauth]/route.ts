@@ -1,11 +1,12 @@
 import NextAuth from "next-auth"
+import NextAuthOptions from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { createClient } from "@supabase/supabase-js"
 import { Session, JWT } from "next-auth"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-const authOptions = {
+export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({

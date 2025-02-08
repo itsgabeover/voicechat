@@ -12,16 +12,16 @@ interface VoiceChatProps {
 }
 
 export default function VoiceChat({ analysis }: VoiceChatProps) {
-  const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState("")
   const [response, setResponse] = useState("")
-  //const recognitionRef = useRef<SpeechRecognition | null>(null) //Removed as we are using useSpeechRecognition hook
 
   const {
     transcript: speechTranscript,
     listening,
     resetTranscript,
     browserSupportsSpeechRecognition,
+    startListening,
+    stopListening,
   } = useSpeechRecognition()
 
   useEffect(() => {
@@ -29,15 +29,15 @@ export default function VoiceChat({ analysis }: VoiceChatProps) {
       console.error("Browser does not support speech recognition.")
     }
     setTranscript(speechTranscript)
-  }, [speechTranscript])
+  }, [speechTranscript, browserSupportsSpeechRecognition]) // Added browserSupportsSpeechRecognition to dependencies
 
   const toggleListening = () => {
     if (listening) {
+      stopListening()
       resetTranscript()
     } else {
-      //recognitionRef.current?.start()  Removed as we are using useSpeechRecognition hook
+      startListening()
     }
-    setIsListening(!listening)
   }
 
   const handleSubmit = async () => {

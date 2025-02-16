@@ -3,19 +3,18 @@ import { redirect } from "next/navigation";
 import { getAnalysisBySlug } from "@/lib/actions/analysis.actions";
 import { Analysis } from "@/types";
 
-interface PageProps {
-  params: { slug: string };
-}
+const AnalysisDetail = async (props: { params: Promise<{ slug: string }> }) => {
+  const { slug } = await props.params; // ✅ Await params like in your working example
 
-const AnalysisDetail = async ({ params }: PageProps) => {
   const session = await auth();
 
-  if (!session) {
+  //  If session or user is missing, redirect
+  if (!session || !session.user || !session.user.id) {
     redirect("/");
   }
 
   // Fetch the analysis by slug
-  const analysis: Analysis | null = await getAnalysisBySlug(params.slug);
+  const analysis: Analysis | null = await getAnalysisBySlug(slug);
 
   // Check if the analysis exists and belongs to the current user
   if (!analysis || analysis.userId !== session.user.id) {

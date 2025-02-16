@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 const UploadPage = async () => {
   const session = await auth();
 
-  if (!session) {
+  // Ensure user ID exists before passing it to the component
+  if (!session || !session.user || !session.user.id) {
     redirect("/");
   }
 

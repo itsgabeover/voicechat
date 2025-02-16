@@ -10,17 +10,18 @@ const Dashboard = async (props: {
   const { callbackUrl } = await props.searchParams;
   const session = await auth();
 
-  if (!session) {
+  if (!session || !session.user || !session.user.id) {
     redirect(callbackUrl || "/");
-  } else {
   }
-  // Fetch user analyses using the direct database query
-  const analyses: Analysis[] = await getUserAnalyses(session.user?.id);
+
+  // ✅ Ensure user ID is a string before calling getUserAnalyses
+  const userId: string = session.user.id;
+  const analyses: Analysis[] = await getUserAnalyses(userId);
 
   return (
     <div className="w-full max-w-4xl mx-auto">
       <h2 className="text-2xl font-semibold mb-6">
-        Welcome, {session.user?.name}
+        Welcome, {session.user.name}
       </h2>
 
       <div className="grid grid-cols-3 gap-6">

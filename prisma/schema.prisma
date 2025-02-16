@@ -28,6 +28,7 @@ model User {
   updatedAt     DateTime  @updatedAt @db.Timestamp(6)
   account       Account[]
   session       Session[]
+  analysis      Analysis[]
 }
 
 model Account {
@@ -67,4 +68,17 @@ model VerificationToken {
   expires    DateTime
  
   @@id([identifier, token])
+}
+
+model Analysis {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName  String
+  fileUrl   String
+  result    Json     @db.Json
+  status    String   @default("PENDING") // Possible values: PENDING, COMPLETED, FAILED
+  slug      String   @unique // Unique slug for easy access
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt
 }

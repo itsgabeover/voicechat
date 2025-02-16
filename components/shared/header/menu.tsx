@@ -17,8 +17,8 @@ const Menu = () => {
       <nav className="hidden md:flex w-full max-w-xs gap-1">
         <ModeToggle />
         <Button asChild variant="ghost">
-          <Link href="/cart">
-            <ShoppingCart /> Cart
+          <Link href="/dashboard">
+            Dashboard
           </Link>
         </Button>
         <UserButton />

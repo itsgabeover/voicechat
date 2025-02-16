@@ -16,9 +16,7 @@ export async function POST(req: Request) {
     }
 
     // ✅ Check if user exists before proceeding
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -32,27 +30,33 @@ export async function POST(req: Request) {
       data: {
         userId,
         fileName: file.name,
-        fileUrl: "pending", // Update when N8n completes
+        fileUrl: "pending",
         result: {},
         status: "PENDING",
         slug,
       },
     });
 
-    // ✅ Add the slug to the formData before sending to N8n
+    // ✅ Append slug & userId to FormData before sending to N8n
     formData.append("slug", slug);
     formData.append("userId", userId);
 
-    // ✅ Send the file & slug to N8n (but don't wait for the response)
+    // ✅ Send the file & slug to N8n **without waiting**
     fetch(process.env.NEXT_PUBLIC_UPLOAD_ENDPOINT!, {
       method: "POST",
-      body: formData,
-    }).catch((err) => console.error("Error sending to N8n:", err));
+      body: formData, // ✅ Keep FormData so the file is sent
+    })
+      .then((res) => {
+        console.log("✅ N8n workflow triggered:", res.status);
+      })
+      .catch((err) => {
+        console.error("❌ Error sending to N8n:", err);
+      });
 
-    // Return immediately
+    // ✅ Return immediately to prevent Vercel timeout
     return NextResponse.json({ message: "Upload started", analysis });
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("❌ Upload error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

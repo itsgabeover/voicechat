@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // ✅ Append slug & userId to FormData before sending to N8n
+    // ✅ Append slug to FormData before sending to N8n
     formData.append("slug", slug);
     formData.append("userId", userId);
 
@@ -53,8 +53,8 @@ export async function POST(req: Request) {
         console.error("❌ Error sending to N8n:", err);
       });
 
-    // ✅ Return immediately to prevent Vercel timeout
-    return NextResponse.json({ message: "Upload started", analysis });
+    // ✅ Redirect user to dashboard after upload
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   } catch (error) {
     console.error("❌ Upload error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

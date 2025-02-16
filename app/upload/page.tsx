@@ -9,7 +9,7 @@ const UploadPage = async () => {
     redirect("/");
   }
 
-  return <UploadComponent userId={session.user?.id} />;
+  return <UploadComponent userId={session.user.id} />;
 };
 
 const UploadComponent = ({ userId }: { userId: string }) => {
@@ -23,6 +23,7 @@ const UploadComponent = ({ userId }: { userId: string }) => {
           name="file"
           accept="application/pdf"
           className="mb-4"
+          required
         />
         <input type="hidden" name="userId" value={userId} />
         <button

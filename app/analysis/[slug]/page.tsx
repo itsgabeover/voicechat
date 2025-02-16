@@ -1,8 +1,13 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/db/prisma";
+import { getAnalysisBySlug } from "@/lib/actions/analysis.actions";
+import { Analysis } from "@/types";
 
-const AnalysisDetail = async ({ params }: { params: { slug: string } }) => {
+interface PageProps {
+  params: { slug: string };
+}
+
+const AnalysisDetail = async ({ params }: PageProps) => {
   const session = await auth();
 
   if (!session) {
@@ -10,9 +15,7 @@ const AnalysisDetail = async ({ params }: { params: { slug: string } }) => {
   }
 
   // Fetch the analysis by slug
-  const analysis = await prisma.analysis.findUnique({
-    where: { slug: params.slug },
-  });
+  const analysis: Analysis | null = await getAnalysisBySlug(params.slug);
 
   // Check if the analysis exists and belongs to the current user
   if (!analysis || analysis.userId !== session.user.id) {
@@ -31,7 +34,6 @@ const AnalysisDetail = async ({ params }: { params: { slug: string } }) => {
       <pre className="text-sm bg-gray-100 p-4 rounded-md overflow-x-auto">
         {JSON.stringify(analysis.result, null, 2)}
       </pre>
-
     </div>
   );
 };

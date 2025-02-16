@@ -19,8 +19,8 @@ export async function POST(req: Request) {
     const slug = `${nanoid(10)}`;
 
     // Convert file to Buffer (for example, for AWS S3 or another storage)
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    // const arrayBuffer = await file.arrayBuffer();
+    // const buffer = Buffer.from(arrayBuffer);
 
     // Upload file to storage (or send to N8n directly)
     const N8N_ENDPOINT = process.env.NEXT_PUBLIC_UPLOAD_ENDPOINT!;

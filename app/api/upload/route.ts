@@ -41,6 +41,7 @@ export async function POST(req: Request) {
 
     // ✅ Add the slug to the formData before sending to N8n
     formData.append("slug", slug);
+    formData.append("userId", userId);
 
     // ✅ Send the file & slug to N8n (but don't wait for the response)
     fetch(process.env.NEXT_PUBLIC_UPLOAD_ENDPOINT!, {

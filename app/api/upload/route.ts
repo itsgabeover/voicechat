@@ -15,6 +15,15 @@ export async function POST(req: Request) {
       );
     }
 
+    // ✅ Check if user exists before proceeding
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     // Generate a unique slug
     const slug = `analysis-${nanoid(8)}`;
 

@@ -25,8 +25,8 @@ export async function POST(req: Request) {
     // Generate a unique slug
     const slug = `analysis-${nanoid(8)}`;
 
-    // Save an empty analysis record with PENDING status
-    const analysis = await prisma.analysis.create({
+    // ✅ Save an empty analysis record with PENDING status (but don't store the variable)
+    await prisma.analysis.create({
       data: {
         userId,
         fileName: file.name,
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // ✅ Append slug to FormData before sending to N8n
+    // ✅ Append slug & userId to FormData before sending to N8n
     formData.append("slug", slug);
     formData.append("userId", userId);
 

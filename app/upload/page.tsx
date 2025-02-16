@@ -1,40 +1,16 @@
+// ✅ SERVER COMPONENT
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import UploadForm from "./upload-form"; // Import the client component
 
 const UploadPage = async () => {
   const session = await auth();
 
-  // Ensure user ID exists before passing it to the component
   if (!session || !session.user || !session.user.id) {
     redirect("/");
   }
 
-  return <UploadComponent userId={session.user.id} />;
-};
-
-const UploadComponent = ({ userId }: { userId: string }) => {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-6">
-      <h1 className="text-2xl font-bold mb-4">Upload a PDF for Analysis</h1>
-
-      <form action="/api/upload" method="POST" encType="multipart/form-data">
-        <input
-          type="file"
-          name="file"
-          accept="application/pdf"
-          className="mb-4"
-          required
-        />
-        <input type="hidden" name="userId" value={userId} />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-500 text-white rounded-md"
-        >
-          Upload & Analyze
-        </button>
-      </form>
-    </div>
-  );
+  return <UploadForm userId={session.user.id} />;
 };
 
 export default UploadPage;

@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     // Generate a unique slug
     const slug = `analysis-${nanoid(8)}`;
 
-    // ✅ Save an empty analysis record with PENDING status (but don't store the variable)
+    // ✅ Save an empty analysis record with PENDING status
     await prisma.analysis.create({
       data: {
         userId,
@@ -53,8 +53,8 @@ export async function POST(req: Request) {
         console.error("❌ Error sending to N8n:", err);
       });
 
-    // ✅ Redirect user to dashboard after upload
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    // ✅ Return JSON instead of redirecting
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("❌ Upload error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

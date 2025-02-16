@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getUserAnalyses } from "@/lib/actions/analysis.actions";
+import { Analysis } from "@/types";
 
 const Dashboard = async (props: {
   searchParams: Promise<{ callbackUrl: string }>;
@@ -14,7 +15,7 @@ const Dashboard = async (props: {
   } else {
   }
   // Fetch user analyses using the direct database query
-  const analyses = await getUserAnalyses(session.user?.id);
+  const analyses: Analysis[] = await getUserAnalyses(session.user?.id);
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -33,7 +34,7 @@ const Dashboard = async (props: {
 
         {/* User's Analysis Cards */}
         {analyses.length > 0 ? (
-          analyses.map((analysis: any) => (
+          analyses.map((analysis: Analysis) => (
             <Link
               key={analysis.id}
               href={`/analysis/${analysis.slug}`}

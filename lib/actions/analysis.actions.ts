@@ -1,9 +1,10 @@
 "use server";
 import { convertToPlainObject } from "../utils";
 import { prisma } from "@/db/prisma";
+import { Analysis, AnalysisStatus } from "@/types"; // Import Analysis type
 
-//get all analyses for a specific user
-export async function getUserAnalyses(userId: string) {
+// Get all analyses for a specific user
+export async function getUserAnalyses(userId: string): Promise<Analysis[]> {
   try {
     if (!prisma || !prisma.analysis) {
       console.error(
@@ -17,21 +18,33 @@ export async function getUserAnalyses(userId: string) {
       orderBy: { createdAt: "desc" }, // Sort by most recent first
     });
 
-    return data ?? []; // Return an empty array if there are no results
+    return data.map((analysis) => ({
+      ...analysis,
+      status: analysis.status as AnalysisStatus, // ✅ Explicitly cast status
+    }));
   } catch (error) {
     console.error("Error in getUserAnalyses:", error);
-    return []; // Return an empty array on failure
+    return [];
   }
 }
 
-
 // Get a single analysis by its slug
-export async function getAnalysisBySlug(slug: string) {
-  const data = await prisma.analysis.findFirst({
-    where: {
-      slug: slug,
-    },
-  });
+export async function getAnalysisBySlug(
+  slug: string
+): Promise<Analysis | null> {
+  try {
+    const data = await prisma.analysis.findFirst({
+      where: { slug },
+    });
 
-  return convertToPlainObject(data);
+    if (!data) return null;
+
+    return {
+      ...convertToPlainObject(data),
+      status: data.status as AnalysisStatus, // ✅ Ensure correct type for status
+    };
+  } catch (error) {
+    console.error("Error fetching analysis by slug:", error);
+    return null;
+  }
 }

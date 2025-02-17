@@ -77,7 +77,7 @@ const PolicyDashboard: React.FC<{ analysis: AnalysisResult }> = ({ analysis }) =
                 <CardContent>
                   {category.quotes.map((quote, index) => (
                     <p key={index} className="mb-2">
-                      "{quote}"
+                      &quot;{quote}&quot;
                     </p>
                   ))}
                   <p>

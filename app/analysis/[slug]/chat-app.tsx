@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
@@ -12,7 +12,7 @@ import Events from "@/app/components/Events";
 import BottomToolbar from "@/app/components/BottomToolbar";
 
 // Types
-import { AgentConfig, SessionStatus } from "@/types";
+import { AgentConfig, SessionStatus, LoggedEvent } from "@/types";
 
 // Context providers & hooks
 import { useTranscript } from "@/app/contexts/TranscriptContext";
@@ -25,7 +25,7 @@ import { createRealtimeConnection } from "@/lib/realtimeConnection";
 // Agent configs
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
 
-function ChatApp() {
+const ChatApp: React.FC = () => {
   const searchParams = useSearchParams();
 
   const { transcriptItems, addTranscriptMessage, addTranscriptBreadcrumb } =
@@ -52,21 +52,41 @@ function ChatApp() {
   const [isAudioPlaybackEnabled, setIsAudioPlaybackEnabled] =
     useState<boolean>(true);
 
-  const sendClientEvent = (eventObj: any, eventNameSuffix = "") => {
-    if (dcRef.current && dcRef.current.readyState === "open") {
-      logClientEvent(eventObj, eventNameSuffix);
-      dcRef.current.send(JSON.stringify(eventObj));
-    } else {
-      logClientEvent(
-        { attemptedEvent: eventObj.type },
-        "error.data_channel_not_open"
-      );
-      console.error(
-        "Failed to send message - no data channel available",
-        eventObj
-      );
-    }
-  };
+  const sendClientEvent = useCallback(
+    (eventData: Record<string, unknown>, eventNameSuffix = "") => {
+      if (dcRef.current && dcRef.current.readyState === "open") {
+        const event: LoggedEvent = {
+          id: uuidv4(),
+          direction: "client",
+          eventName: `${String(eventData.type || "UNKNOWN")}${
+            eventNameSuffix ? " " + eventNameSuffix : ""
+          }`, // appended suffix to eventName
+          timestamp: new Date().toISOString(),
+          eventData: eventData, // renamed property from 'data' to 'eventData'
+          expanded: false,
+        };
+
+        logClientEvent(event, eventNameSuffix);
+        dcRef.current.send(JSON.stringify(eventData));
+      } else {
+        const errorEvent: LoggedEvent = {
+          id: uuidv4(),
+          direction: "client",
+          eventName: `ERROR${" " + "error.data_channel_not_open"}`, // appended suffix to eventName
+          timestamp: new Date().toISOString(),
+          eventData: { attemptedEvent: eventData.type }, // renamed property from 'data' to 'eventData'
+          expanded: false,
+        };
+
+        logClientEvent(errorEvent, "error.data_channel_not_open");
+        console.error(
+          "Failed to send message - no data channel available",
+          eventData
+        );
+      }
+    },
+    [logClientEvent]
+  );
 
   const handleServerEventRef = useHandleServerEvent({
     setSessionStatus,
@@ -76,53 +96,7 @@ function ChatApp() {
     setSelectedAgentName,
   });
 
-  useEffect(() => {
-    let finalAgentConfig = searchParams.get("agentConfig");
-    if (!finalAgentConfig || !allAgentSets[finalAgentConfig]) {
-      finalAgentConfig = defaultAgentSetKey;
-      const url = new URL(window.location.toString());
-      url.searchParams.set("agentConfig", finalAgentConfig);
-      window.location.replace(url.toString());
-      return;
-    }
-
-    const agents = allAgentSets[finalAgentConfig];
-    const agentKeyToUse = agents[0]?.name || "";
-
-    setSelectedAgentName(agentKeyToUse);
-    setSelectedAgentConfigSet(agents);
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (selectedAgentName && sessionStatus === "DISCONNECTED") {
-      connectToRealtime();
-    }
-  }, [selectedAgentName]);
-
-  useEffect(() => {
-    if (
-      sessionStatus === "CONNECTED" &&
-      selectedAgentConfigSet &&
-      selectedAgentName
-    ) {
-      const currentAgent = selectedAgentConfigSet.find(
-        (a) => a.name === selectedAgentName
-      );
-      addTranscriptBreadcrumb(`Agent: ${selectedAgentName}`, currentAgent);
-      updateSession(true);
-    }
-  }, [selectedAgentConfigSet, selectedAgentName, sessionStatus]);
-
-  useEffect(() => {
-    if (sessionStatus === "CONNECTED") {
-      console.log(
-        `updatingSession, isPTTACtive=${isPTTActive} sessionStatus=${sessionStatus}`
-      );
-      updateSession();
-    }
-  }, [isPTTActive]);
-
-  const fetchEphemeralKey = async (): Promise<string | null> => {
+  const fetchEphemeralKey = useCallback(async (): Promise<string | null> => {
     logClientEvent({ url: "/session" }, "fetch_session_token_request");
     const tokenResponse = await fetch("/api/session");
     const data = await tokenResponse.json();
@@ -136,9 +110,119 @@ function ChatApp() {
     }
 
     return data.client_secret.value;
-  };
+  }, [logClientEvent, logServerEvent]);
 
-  const connectToRealtime = async () => {
+  const sendSimulatedUserMessage = useCallback(
+    (text: string) => {
+      const id = uuidv4().slice(0, 32);
+      addTranscriptMessage(id, "user", text, true);
+
+      sendClientEvent(
+        {
+          type: "conversation.item.create",
+          item: {
+            id,
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text }],
+          },
+        },
+        "(simulated user text message)"
+      );
+      sendClientEvent(
+        { type: "response.create" },
+        "(trigger response after simulated user text message)"
+      );
+    },
+    [addTranscriptMessage, sendClientEvent]
+  );
+
+  // Add a lastUpdateTime ref to track when we last updated
+  const lastUpdateTime = useRef<number>(0);
+  const isUpdatingSession = useRef(false);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const updateSession = useCallback(
+    async (shouldTriggerResponse: boolean = false) => {
+      // Add debounce check - only allow updates every 2 seconds
+      const now = Date.now();
+      if (now - lastUpdateTime.current < 2000) {
+        console.log("Skipping update - too soon since last update");
+        return;
+      }
+
+      if (isUpdatingSession.current) {
+        console.log("Session update already in progress, skipping");
+        return;
+      }
+
+      isUpdatingSession.current = true;
+      lastUpdateTime.current = now;
+
+      try {
+        // Clear any pending update timeout
+        if (updateTimeoutRef.current) {
+          clearTimeout(updateTimeoutRef.current);
+        }
+
+        sendClientEvent(
+          { type: "input_audio_buffer.clear" },
+          "clear audio buffer on session update"
+        );
+
+        const currentAgent = selectedAgentConfigSet?.find(
+          (a) => a.name === selectedAgentName
+        );
+
+        const turnDetection = isPTTActive
+          ? null
+          : {
+              type: "server_vad",
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 200,
+              create_response: true,
+            };
+
+        const instructions = currentAgent?.instructions || "";
+        const tools = currentAgent?.tools || [];
+
+        const sessionUpdateEvent = {
+          type: "session.update",
+          session: {
+            modalities: ["text", "audio"],
+            instructions,
+            voice: "coral",
+            input_audio_format: "pcm16",
+            output_audio_format: "pcm16",
+            input_audio_transcription: { model: "whisper-1" },
+            turn_detection: turnDetection,
+            tools,
+          },
+        };
+
+        sendClientEvent(sessionUpdateEvent);
+
+        if (shouldTriggerResponse) {
+          sendSimulatedUserMessage("hi");
+        }
+      } finally {
+        // Set timeout to allow next update
+        updateTimeoutRef.current = setTimeout(() => {
+          isUpdatingSession.current = false;
+        }, 1000);
+      }
+    },
+    [
+      sendClientEvent,
+      selectedAgentConfigSet,
+      selectedAgentName,
+      isPTTActive,
+      sendSimulatedUserMessage,
+    ]
+  );
+
+  const connectToRealtime = useCallback(async () => {
     if (sessionStatus !== "DISCONNECTED") return;
     setSessionStatus("CONNECTING");
 
@@ -166,8 +250,8 @@ function ChatApp() {
       dc.addEventListener("close", () => {
         logClientEvent({}, "data_channel.close");
       });
-      dc.addEventListener("error", (err: any) => {
-        logClientEvent({ error: err }, "data_channel.error");
+      dc.addEventListener("error", (event: RTCErrorEvent) => {
+        logClientEvent({ error: event.error }, "data_channel.error");
       });
       dc.addEventListener("message", (e: MessageEvent) => {
         handleServerEventRef.current(JSON.parse(e.data));
@@ -178,9 +262,93 @@ function ChatApp() {
       console.error("Error connecting to realtime:", err);
       setSessionStatus("DISCONNECTED");
     }
-  };
+  }, [
+    sessionStatus,
+    isAudioPlaybackEnabled,
+    fetchEphemeralKey,
+    logClientEvent,
+    handleServerEventRef,
+  ]);
 
-  const disconnectFromRealtime = () => {
+  useEffect(() => {
+    let finalAgentConfig = searchParams.get("agentConfig");
+    if (!finalAgentConfig || !allAgentSets[finalAgentConfig]) {
+      finalAgentConfig = defaultAgentSetKey;
+      const url = new URL(window.location.toString());
+      url.searchParams.set("agentConfig", finalAgentConfig);
+      window.location.replace(url.toString());
+      return;
+    }
+
+    const agents = allAgentSets[finalAgentConfig];
+    const agentKeyToUse = agents[0]?.name || "";
+
+    setSelectedAgentName(agentKeyToUse);
+    setSelectedAgentConfigSet(agents);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (selectedAgentName && sessionStatus === "DISCONNECTED") {
+      connectToRealtime();
+    }
+  }, [selectedAgentName, sessionStatus, connectToRealtime]);
+
+  // Add a ref to track first connection
+  const isFirstConnection = useRef(true);
+
+  // Modify the effect that handles session updates to avoid loops
+  useEffect(() => {
+    const shouldUpdate =
+      sessionStatus === "CONNECTED" &&
+      selectedAgentConfigSet &&
+      selectedAgentName &&
+      !isUpdatingSession.current &&
+      Date.now() - lastUpdateTime.current >= 2000;
+
+    if (shouldUpdate) {
+      const currentAgent = selectedAgentConfigSet.find(
+        (a) => a.name === selectedAgentName
+      );
+      addTranscriptBreadcrumb(
+        `Agent: ${selectedAgentName}`,
+        currentAgent ? { ...currentAgent } : undefined
+      );
+
+      // Only trigger initial message on first connection
+      const shouldTriggerResponse = isFirstConnection.current;
+      isFirstConnection.current = false;
+
+      updateSession(shouldTriggerResponse);
+    }
+  }, [
+    selectedAgentConfigSet,
+    selectedAgentName,
+    sessionStatus,
+    addTranscriptBreadcrumb,
+    updateSession,
+  ]);
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Instead, update session directly when PTT changes
+  const handlePTTChange = useCallback(
+    (newValue: boolean) => {
+      setIsPTTActive(newValue);
+      if (sessionStatus === "CONNECTED" && !isUpdatingSession.current) {
+        updateSession(false);
+      }
+    },
+    [sessionStatus, updateSession]
+  );
+
+  const disconnectFromRealtime = useCallback(() => {
     if (pcRef.current) {
       pcRef.current.getSenders().forEach((sender) => {
         if (sender.track) {
@@ -196,75 +364,9 @@ function ChatApp() {
     setIsPTTUserSpeaking(false);
 
     logClientEvent({}, "disconnected");
-  };
+  }, [logClientEvent]);
 
-  const sendSimulatedUserMessage = (text: string) => {
-    const id = uuidv4().slice(0, 32);
-    addTranscriptMessage(id, "user", text, true);
-
-    sendClientEvent(
-      {
-        type: "conversation.item.create",
-        item: {
-          id,
-          type: "message",
-          role: "user",
-          content: [{ type: "input_text", text }],
-        },
-      },
-      "(simulated user text message)"
-    );
-    sendClientEvent(
-      { type: "response.create" },
-      "(trigger response after simulated user text message)"
-    );
-  };
-
-  const updateSession = (shouldTriggerResponse: boolean = false) => {
-    sendClientEvent(
-      { type: "input_audio_buffer.clear" },
-      "clear audio buffer on session update"
-    );
-
-    const currentAgent = selectedAgentConfigSet?.find(
-      (a) => a.name === selectedAgentName
-    );
-
-    const turnDetection = isPTTActive
-      ? null
-      : {
-          type: "server_vad",
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 200,
-          create_response: true,
-        };
-
-    const instructions = currentAgent?.instructions || "";
-    const tools = currentAgent?.tools || [];
-
-    const sessionUpdateEvent = {
-      type: "session.update",
-      session: {
-        modalities: ["text", "audio"],
-        instructions,
-        voice: "coral",
-        input_audio_format: "pcm16",
-        output_audio_format: "pcm16",
-        input_audio_transcription: { model: "whisper-1" },
-        turn_detection: turnDetection,
-        tools,
-      },
-    };
-
-    sendClientEvent(sessionUpdateEvent);
-
-    if (shouldTriggerResponse) {
-      sendSimulatedUserMessage("hi");
-    }
-  };
-
-  const cancelAssistantSpeech = async () => {
+  const cancelAssistantSpeech = useCallback(async () => {
     const mostRecentAssistantMessage = [...transcriptItems]
       .reverse()
       .find((item) => item.role === "assistant");
@@ -288,9 +390,9 @@ function ChatApp() {
       { type: "response.cancel" },
       "(cancel due to user interruption)"
     );
-  };
+  }, [sendClientEvent, transcriptItems]);
 
-  const handleSendTextMessage = () => {
+  const handleSendTextMessage = useCallback(() => {
     if (!userText.trim()) return;
     cancelAssistantSpeech();
 
@@ -308,18 +410,18 @@ function ChatApp() {
     setUserText("");
 
     sendClientEvent({ type: "response.create" }, "trigger response");
-  };
+  }, [userText, cancelAssistantSpeech, sendClientEvent]);
 
-  const handleTalkButtonDown = () => {
+  const handleTalkButtonDown = useCallback(() => {
     if (sessionStatus !== "CONNECTED" || dataChannel?.readyState !== "open")
       return;
     cancelAssistantSpeech();
 
     setIsPTTUserSpeaking(true);
     sendClientEvent({ type: "input_audio_buffer.clear" }, "clear PTT buffer");
-  };
+  }, [sessionStatus, dataChannel, cancelAssistantSpeech, sendClientEvent]);
 
-  const handleTalkButtonUp = () => {
+  const handleTalkButtonUp = useCallback(() => {
     if (
       sessionStatus !== "CONNECTED" ||
       dataChannel?.readyState !== "open" ||
@@ -330,16 +432,16 @@ function ChatApp() {
     setIsPTTUserSpeaking(false);
     sendClientEvent({ type: "input_audio_buffer.commit" }, "commit PTT");
     sendClientEvent({ type: "response.create" }, "trigger response PTT");
-  };
+  }, [sessionStatus, dataChannel, isPTTUserSpeaking, sendClientEvent]);
 
-  const onToggleConnection = () => {
+  const onToggleConnection = useCallback(() => {
     if (sessionStatus === "CONNECTED" || sessionStatus === "CONNECTING") {
       disconnectFromRealtime();
       setSessionStatus("DISCONNECTED");
     } else {
       connectToRealtime();
     }
-  };
+  }, [sessionStatus, disconnectFromRealtime, connectToRealtime]);
 
   const handleAgentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newAgentConfig = e.target.value;
@@ -502,7 +604,7 @@ function ChatApp() {
         sessionStatus={sessionStatus}
         onToggleConnection={onToggleConnection}
         isPTTActive={isPTTActive}
-        setIsPTTActive={setIsPTTActive}
+        setIsPTTActive={handlePTTChange} // Use new handler instead of direct setState
         isPTTUserSpeaking={isPTTUserSpeaking}
         handleTalkButtonDown={handleTalkButtonDown}
         handleTalkButtonUp={handleTalkButtonUp}
@@ -513,6 +615,6 @@ function ChatApp() {
       />
     </div>
   );
-}
+};
 
 export default ChatApp;

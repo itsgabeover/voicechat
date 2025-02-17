@@ -1,4 +1,4 @@
-import { AgentConfig } from "@/app/types";
+import { AgentConfig } from "@/types";
 
 const authentication: AgentConfig = {
   name: "authentication",

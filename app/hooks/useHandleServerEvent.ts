@@ -1,26 +1,38 @@
 "use client";
 
-import { ServerEvent, SessionStatus, AgentConfig } from "@/app/types";
+import { ServerEvent, SessionStatus, AgentConfig } from "@/types";
 import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { useEvent } from "@/app/contexts/EventContext";
-import { useRef } from "react";
+import { useRef, useCallback } from "react";
 
 export interface UseHandleServerEventParams {
   setSessionStatus: (status: SessionStatus) => void;
   selectedAgentName: string;
   selectedAgentConfigSet: AgentConfig[] | null;
-  sendClientEvent: (eventObj: any, eventNameSuffix?: string) => void;
+  sendClientEvent: (
+    eventObj: Record<string, unknown>,
+    eventNameSuffix?: string
+  ) => void;
   setSelectedAgentName: (name: string) => void;
   shouldForceResponse?: boolean;
 }
 
-export function useHandleServerEvent({
+export const useHandleServerEvent = ({
   setSessionStatus,
   selectedAgentName,
   selectedAgentConfigSet,
   sendClientEvent,
   setSelectedAgentName,
-}: UseHandleServerEventParams) {
+}: {
+  setSessionStatus: React.Dispatch<React.SetStateAction<SessionStatus>>;
+  selectedAgentName: string;
+  selectedAgentConfigSet: AgentConfig[] | null;
+  sendClientEvent: (
+    eventObj: Record<string, unknown>,
+    eventNameSuffix?: string
+  ) => void;
+  setSelectedAgentName: React.Dispatch<React.SetStateAction<string>>;
+}) => {
   const {
     transcriptItems,
     addTranscriptBreadcrumb,
@@ -63,7 +75,8 @@ export function useHandleServerEvent({
     } else if (functionCallParams.name === "transferAgents") {
       const destinationAgent = args.destination_agent;
       const newAgentConfig =
-        selectedAgentConfigSet?.find((a) => a.name === destinationAgent) || null;
+        selectedAgentConfigSet?.find((a) => a.name === destinationAgent) ||
+        null;
       if (newAgentConfig) {
         setSelectedAgentName(destinationAgent);
       }
@@ -102,98 +115,104 @@ export function useHandleServerEvent({
     }
   };
 
-  const handleServerEvent = (serverEvent: ServerEvent) => {
-    logServerEvent(serverEvent);
+  const handleServerEvent = useCallback(
+    (serverEvent: ServerEvent) => {
+      logServerEvent({ ...serverEvent });
 
-    switch (serverEvent.type) {
-      case "session.created": {
-        if (serverEvent.session?.id) {
-          setSessionStatus("CONNECTED");
-          addTranscriptBreadcrumb(
-            `session.id: ${
-              serverEvent.session.id
-            }\nStarted at: ${new Date().toLocaleString()}`
-          );
-        }
-        break;
-      }
-
-      case "conversation.item.created": {
-        let text =
-          serverEvent.item?.content?.[0]?.text ||
-          serverEvent.item?.content?.[0]?.transcript ||
-          "";
-        const role = serverEvent.item?.role as "user" | "assistant";
-        const itemId = serverEvent.item?.id;
-
-        if (itemId && transcriptItems.some((item) => item.itemId === itemId)) {
+      switch (serverEvent.type) {
+        case "session.created": {
+          if (serverEvent.session?.id) {
+            setSessionStatus("CONNECTED");
+            addTranscriptBreadcrumb(
+              `session.id: ${
+                serverEvent.session.id
+              }\nStarted at: ${new Date().toLocaleString()}`
+            );
+          }
           break;
         }
 
-        if (itemId && role) {
-          if (role === "user" && !text) {
-            text = "[Transcribing...]";
+        case "conversation.item.created": {
+          let text =
+            serverEvent.item?.content?.[0]?.text ||
+            serverEvent.item?.content?.[0]?.transcript ||
+            "";
+          const role = serverEvent.item?.role as "user" | "assistant";
+          const itemId = serverEvent.item?.id;
+
+          if (
+            itemId &&
+            transcriptItems.some((item) => item.itemId === itemId)
+          ) {
+            break;
           }
-          addTranscriptMessage(itemId, role, text);
-        }
-        break;
-      }
 
-      case "conversation.item.input_audio_transcription.completed": {
-        const itemId = serverEvent.item_id;
-        const finalTranscript =
-          !serverEvent.transcript || serverEvent.transcript === "\n"
-            ? "[inaudible]"
-            : serverEvent.transcript;
-        if (itemId) {
-          updateTranscriptMessage(itemId, finalTranscript, false);
-        }
-        break;
-      }
-
-      case "response.audio_transcript.delta": {
-        const itemId = serverEvent.item_id;
-        const deltaText = serverEvent.delta || "";
-        if (itemId) {
-          updateTranscriptMessage(itemId, deltaText, true);
-        }
-        break;
-      }
-
-      case "response.done": {
-        if (serverEvent.response?.output) {
-          serverEvent.response.output.forEach((outputItem) => {
-            if (
-              outputItem.type === "function_call" &&
-              outputItem.name &&
-              outputItem.arguments
-            ) {
-              handleFunctionCall({
-                name: outputItem.name,
-                call_id: outputItem.call_id,
-                arguments: outputItem.arguments,
-              });
+          if (itemId && role) {
+            if (role === "user" && !text) {
+              text = "[Transcribing...]";
             }
-          });
+            addTranscriptMessage(itemId, role, text);
+          }
+          break;
         }
-        break;
-      }
 
-      case "response.output_item.done": {
-        const itemId = serverEvent.item?.id;
-        if (itemId) {
-          updateTranscriptItemStatus(itemId, "DONE");
+        case "conversation.item.input_audio_transcription.completed": {
+          const itemId = serverEvent.item_id;
+          const finalTranscript =
+            !serverEvent.transcript || serverEvent.transcript === "\n"
+              ? "[inaudible]"
+              : serverEvent.transcript;
+          if (itemId) {
+            updateTranscriptMessage(itemId, finalTranscript, false);
+          }
+          break;
         }
-        break;
-      }
 
-      default:
-        break;
-    }
-  };
+        case "response.audio_transcript.delta": {
+          const itemId = serverEvent.item_id;
+          const deltaText = serverEvent.delta || "";
+          if (itemId) {
+            updateTranscriptMessage(itemId, deltaText, true);
+          }
+          break;
+        }
+
+        case "response.done": {
+          if (serverEvent.response?.output) {
+            serverEvent.response.output.forEach((outputItem) => {
+              if (
+                outputItem.type === "function_call" &&
+                outputItem.name &&
+                outputItem.arguments
+              ) {
+                handleFunctionCall({
+                  name: outputItem.name,
+                  call_id: outputItem.call_id,
+                  arguments: outputItem.arguments,
+                });
+              }
+            });
+          }
+          break;
+        }
+
+        case "response.output_item.done": {
+          const itemId = serverEvent.item?.id;
+          if (itemId) {
+            updateTranscriptItemStatus(itemId, "DONE");
+          }
+          break;
+        }
+
+        default:
+          break;
+      }
+    },
+    [logServerEvent, setSessionStatus]
+  );
 
   const handleServerEventRef = useRef(handleServerEvent);
   handleServerEventRef.current = handleServerEvent;
 
   return handleServerEventRef;
-}
+};

@@ -1,4 +1,4 @@
-import { AgentConfig } from "@/app/types";
+import { AgentConfig } from "@/types";
 
 /**
  * Typed agent definitions in the style of AgentConfigSet from ../types

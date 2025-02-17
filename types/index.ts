@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { insertAnalysisSchema } from "@/lib/validators";
 
-
 export type AnalysisStatus = "PENDING" | "COMPLETED" | "FAILED";
 
 export type Analysis = z.infer<typeof insertAnalysisSchema> & {
@@ -37,7 +36,7 @@ export type AnalysisResult = {
     };
   }[];
   finalThoughts: string;
-}
+};
 
 //Chatbot types
 export type SessionStatus = "DISCONNECTED" | "CONNECTING" | "CONNECTED";
@@ -142,8 +141,8 @@ export interface ServerEvent {
   };
 }
 
-export interface LoggedEvent {
-  id: number;
+export interface LoggedEvent extends Record<string, unknown> {
+  id: string; // updated from number to string
   direction: "client" | "server";
   expanded: boolean;
   timestamp: string;

@@ -11,4 +11,4 @@ export const allAgentSets: AllAgentConfigsType = {
   policyAnalyzer,
 };
 
-export const defaultAgentSetKey = "simpleExample";
+export const defaultAgentSetKey = "policyAnalyzer";

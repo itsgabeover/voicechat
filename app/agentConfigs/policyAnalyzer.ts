@@ -1,25 +1,19 @@
 import { AgentConfig } from "@/types";
 import { injectTransferTools } from "./utils";
+import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
+import { getAnalysisBySlug } from "@/lib/actions/analysis.actions";
 
 // Define agents
-const haiku: AgentConfig = {
-  name: "haiku",
-  publicDescription: "Agent that writes haikus.", // Context for the agent_transfer tool
-  instructions:
-    "Ask the user for a topic, then reply with a haiku about that topic.",
+const policyAnalyzer: AgentConfig = {
+  name: "Policy Analyst",
+  publicDescription: "Agent that can chat with your policy", // Context for the agent_transfer tool
+  instructions: "Respond to user queries about their policy",
   tools: [],
 };
 
-const greeter: AgentConfig = {
-  name: "greeter",
-  publicDescription: "Agent that greets the user.",
-  instructions:
-    "Please greet the user and ask them if they'd like a Haiku. If yes, transfer them to the 'haiku' agent.",
-  tools: [],
-  downstreamAgents: [haiku],
-};
 
 // add the transfer tool to point to downstreamAgents
-const agents = injectTransferTools([greeter, haiku]);
+const agents = injectTransferTools([policyAnalyzer]);
 
 export default agents;

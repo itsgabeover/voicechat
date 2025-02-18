@@ -4,6 +4,8 @@ import { getAnalysisBySlug } from "@/lib/actions/analysis.actions";
 import { Analysis } from "@/types";
 import PolicyDashboard from "./policy-dashboard"; // Import the new Policy Dashboard component
 import FloatingChatButton from "./floating-chat-button";
+import { TranscriptProvider } from "@/app/contexts/TranscriptContext";
+import { EventProvider } from "@/app/contexts/EventContext";
 
 
 const AnalysisDetail = async (props: { params: Promise<{ slug: string }> }) => {
@@ -35,8 +37,12 @@ const AnalysisDetail = async (props: { params: Promise<{ slug: string }> }) => {
       {/* Render the Policy Dashboard with the analysis result */}
       {analysis.result && Object.keys(analysis.result).length > 0 ? (
         <>
-          <PolicyDashboard analysis={analysis.result} />
-          <FloatingChatButton />
+          <TranscriptProvider>
+            <EventProvider>
+              <PolicyDashboard analysis={analysis.result} />
+              <FloatingChatButton />
+            </EventProvider>
+          </TranscriptProvider>
         </>
       ) : (
         <p className="text-red-500">No analysis result available.</p>

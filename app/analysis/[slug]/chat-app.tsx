@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
 import Image from "next/image";
@@ -27,6 +27,7 @@ import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
 
 function ChatApp() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const { transcriptItems, addTranscriptMessage, addTranscriptBreadcrumb } =
     useTranscript();
@@ -82,7 +83,7 @@ function ChatApp() {
       finalAgentConfig = defaultAgentSetKey;
       const url = new URL(window.location.toString());
       url.searchParams.set("agentConfig", finalAgentConfig);
-      window.location.replace(url.toString());
+      router.replace(url.toString());
       return;
     }
 
@@ -345,7 +346,7 @@ function ChatApp() {
     const newAgentConfig = e.target.value;
     const url = new URL(window.location.toString());
     url.searchParams.set("agentConfig", newAgentConfig);
-    window.location.replace(url.toString());
+    router.replace(url.toString());
   };
 
   const handleSelectedAgentChange = (
@@ -513,4 +514,3 @@ function ChatApp() {
 }
 
 export default ChatApp;
-

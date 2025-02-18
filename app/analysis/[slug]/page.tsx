@@ -3,9 +3,8 @@ import { redirect } from "next/navigation";
 import { getAnalysisBySlug } from "@/lib/actions/analysis.actions";
 import { Analysis } from "@/types";
 import PolicyDashboard from "./policy-dashboard"; // Import the new Policy Dashboard component
-import ChatApp from "./chat-app";
-import { TranscriptProvider } from "@/app/contexts/TranscriptContext";
-import { EventProvider } from "@/app/contexts/EventContext";
+import FloatingChatButton from "./floating-chat-button";
+
 
 const AnalysisDetail = async (props: { params: Promise<{ slug: string }> }) => {
   const { slug } = await props.params; // ✅ Await params like in your working example
@@ -37,11 +36,7 @@ const AnalysisDetail = async (props: { params: Promise<{ slug: string }> }) => {
       {analysis.result && Object.keys(analysis.result).length > 0 ? (
         <>
           <PolicyDashboard analysis={analysis.result} />
-          <TranscriptProvider>
-            <EventProvider>
-              <ChatApp />
-            </EventProvider>
-          </TranscriptProvider>
+          <FloatingChatButton />
         </>
       ) : (
         <p className="text-red-500">No analysis result available.</p>

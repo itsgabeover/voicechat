@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ Check if user exists before proceeding
+    // Check if user exists before proceeding
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     }
 
     // Generate a unique slug
-    const slug = `analysis-${nanoid(8)}`;
+    const slug = `${nanoid(10)}`;
 
     // ✅ Save an empty analysis record with PENDING status
     await prisma.analysis.create({
@@ -37,26 +37,26 @@ export async function POST(req: Request) {
       },
     });
 
-    // ✅ Append slug & userId to FormData before sending to N8n
+    // Append slug & userId to FormData before sending to N8n
     formData.append("slug", slug);
     formData.append("userId", userId);
 
-    // ✅ Send the file & slug to N8n **without waiting**
+    // Send the file & slug to N8n **without waiting**
     fetch(process.env.NEXT_PUBLIC_UPLOAD_ENDPOINT!, {
       method: "POST",
-      body: formData, // ✅ Keep FormData so the file is sent
+      body: formData, // Keep FormData so the file is sent
     })
       .then((res) => {
-        console.log("✅ N8n workflow triggered:", res.status);
+        console.log("N8n workflow triggered:", res.status);
       })
       .catch((err) => {
-        console.error("❌ Error sending to N8n:", err);
+        console.error("Error sending to N8n:", err);
       });
 
-    // ✅ Return JSON instead of redirecting
+    // Return JSON instead of redirecting
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("❌ Upload error:", error);
+    console.error("Upload error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

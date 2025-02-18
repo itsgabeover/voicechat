@@ -6,7 +6,6 @@ import React, {
   useState,
   FC,
   PropsWithChildren,
-  useCallback,
 } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { LoggedEvent } from "@/types";
@@ -14,55 +13,42 @@ import { LoggedEvent } from "@/types";
 type EventContextValue = {
   loggedEvents: LoggedEvent[];
   logClientEvent: (
-    eventObj: Record<string, unknown>,
+    eventObj: Record<string, any>,
     eventNameSuffix?: string
   ) => void;
   logServerEvent: (
-    eventObj: Record<string, unknown>,
+    eventObj: Record<string, any>,
     eventNameSuffix?: string
   ) => void;
-  toggleExpand: (id: string) => void;
+  toggleExpand: (id: number | string) => void;
 };
 
-export const EventContext = createContext<EventContextValue>({
-  loggedEvents: [],
-  logClientEvent: () => {},
-  logServerEvent: () => {},
-  toggleExpand: () => {},
-});
+const EventContext = createContext<EventContextValue | undefined>(undefined);
 
 export const EventProvider: FC<PropsWithChildren> = ({ children }) => {
   const [loggedEvents, setLoggedEvents] = useState<LoggedEvent[]>([]);
 
-  const addLoggedEvent = useCallback(
-    (
-      direction: "client" | "server",
-      eventName: string,
-      eventData: Record<string, unknown>
-    ) => {
-      const id = eventData.event_id ? String(eventData.event_id) : uuidv4();
-      setLoggedEvents((prev) => {
-        if (prev.some((log) => log.id === id)) {
-          return prev;
-        }
-        return [
-          ...prev,
-          {
-            id,
-            direction,
-            eventName,
-            eventData,
-            timestamp: new Date().toLocaleTimeString(),
-            expanded: false,
-          },
-        ];
-      });
-    },
-    []
-  );
+  function addLoggedEvent(
+    direction: "client" | "server",
+    eventName: string,
+    eventData: Record<string, any>
+  ) {
+    const id = eventData.event_id || uuidv4();
+    setLoggedEvents((prev) => [
+      ...prev,
+      {
+        id,
+        direction,
+        eventName,
+        eventData,
+        timestamp: new Date().toLocaleTimeString(),
+        expanded: false,
+      },
+    ]);
+  }
 
   const logClientEvent: EventContextValue["logClientEvent"] = (
-    eventObj: Record<string, unknown>,
+    eventObj,
     eventNameSuffix = ""
   ) => {
     const name = `${eventObj.type || ""} ${eventNameSuffix || ""}`.trim();
@@ -70,14 +56,14 @@ export const EventProvider: FC<PropsWithChildren> = ({ children }) => {
   };
 
   const logServerEvent: EventContextValue["logServerEvent"] = (
-    eventObj: Record<string, unknown>,
+    eventObj,
     eventNameSuffix = ""
   ) => {
     const name = `${eventObj.type || ""} ${eventNameSuffix || ""}`.trim();
     addLoggedEvent("server", name, eventObj);
   };
 
-  const toggleExpand: EventContextValue["toggleExpand"] = (id: string) => {
+  const toggleExpand: EventContextValue["toggleExpand"] = (id) => {
     setLoggedEvents((prev) =>
       prev.map((log) => {
         if (log.id === id) {

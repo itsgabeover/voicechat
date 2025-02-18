@@ -13,16 +13,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(completion);
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error("Error in /chat/completions:", error);
-    return NextResponse.json(
-      { error: (error as Error).message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-// Remove unused handler function
-// const handler = async (req: Request, res: Response) => {
-//   const data: { [key: string]: string } = await req.json();
-// };

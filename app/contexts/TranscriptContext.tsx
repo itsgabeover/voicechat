@@ -23,10 +23,7 @@ type TranscriptContextValue = {
     text: string,
     isDelta: boolean
   ) => void;
-  addTranscriptBreadcrumb: (
-    title: string,
-    data?: Record<string, unknown>
-  ) => void;
+  addTranscriptBreadcrumb: (title: string, data?: Record<string, any>) => void;
   toggleTranscriptItemExpand: (itemId: string) => void;
   updateTranscriptItemStatus: (
     itemId: string,
@@ -34,14 +31,9 @@ type TranscriptContextValue = {
   ) => void;
 };
 
-export const TranscriptContext = createContext<TranscriptContextValue>({
-  transcriptItems: [],
-  addTranscriptMessage: () => {},
-  updateTranscriptMessage: () => {},
-  addTranscriptBreadcrumb: () => {},
-  toggleTranscriptItemExpand: () => {},
-  updateTranscriptItemStatus: () => {},
-});
+const TranscriptContext = createContext<TranscriptContextValue | undefined>(
+  undefined
+);
 
 export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
   const [transcriptItems, setTranscriptItems] = useState<TranscriptItem[]>([]);
@@ -101,7 +93,7 @@ export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
     };
 
   const addTranscriptBreadcrumb: TranscriptContextValue["addTranscriptBreadcrumb"] =
-    (title, data?: Record<string, unknown>) => {
+    (title, data) => {
       setTranscriptItems((prev) => [
         ...prev,
         {

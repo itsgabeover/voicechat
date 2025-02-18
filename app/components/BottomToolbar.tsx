@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import { SessionStatus } from "@/types";
 
@@ -38,7 +39,7 @@ function BottomToolbar({
   }
 
   function getConnectionButtonClasses() {
-    const baseClasses = "text-white text-base p-2 w-36 rounded-full h-full";
+    const baseClasses = "text-white text-sm px-4 py-2 rounded-full";
     const cursorClass = isConnecting ? "cursor-not-allowed" : "cursor-pointer";
 
     if (isConnected) {
@@ -50,7 +51,7 @@ function BottomToolbar({
   }
 
   return (
-    <div className="p-4 flex flex-row items-center justify-center gap-x-8">
+    <div className="flex items-center justify-center gap-4 p-2 border-t border-gray-300 bg-white">
       <button
         onClick={onToggleConnection}
         className={getConnectionButtonClasses()}
@@ -59,17 +60,17 @@ function BottomToolbar({
         {getConnectionButtonLabel()}
       </button>
 
-      <div className="flex flex-row items-center gap-2">
+      <div className="flex items-center gap-2">
         <input
           id="push-to-talk"
           type="checkbox"
           checked={isPTTActive}
-          onChange={e => setIsPTTActive(e.target.checked)}
+          onChange={(e) => setIsPTTActive(e.target.checked)}
           disabled={!isConnected}
           className="w-4 h-4"
         />
-        <label htmlFor="push-to-talk" className="flex items-center cursor-pointer">
-          Push to talk
+        <label htmlFor="push-to-talk" className="text-sm cursor-pointer">
+          PTT
         </label>
         <button
           onMouseDown={handleTalkButtonDown}
@@ -77,42 +78,42 @@ function BottomToolbar({
           onTouchStart={handleTalkButtonDown}
           onTouchEnd={handleTalkButtonUp}
           disabled={!isPTTActive}
-          className={
-            (isPTTUserSpeaking ? "bg-gray-300" : "bg-gray-200") +
-            " py-1 px-4 cursor-pointer rounded-full" +
-            (!isPTTActive ? " bg-gray-100 text-gray-400" : "")
-          }
+          className={`text-sm px-2 py-1 rounded-full transition-colors ${
+            isPTTUserSpeaking ? "bg-gray-300" : "bg-gray-200"
+          } ${
+            !isPTTActive ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""
+          }`}
         >
           Talk
         </button>
       </div>
 
-      <div className="flex flex-row items-center gap-2">
+      <div className="flex items-center gap-2">
         <input
           id="audio-playback"
           type="checkbox"
           checked={isAudioPlaybackEnabled}
-          onChange={e => setIsAudioPlaybackEnabled(e.target.checked)}
+          onChange={(e) => setIsAudioPlaybackEnabled(e.target.checked)}
           disabled={!isConnected}
           className="w-4 h-4"
         />
-        <label htmlFor="audio-playback" className="flex items-center cursor-pointer">
-          Audio playback
+        <label htmlFor="audio-playback" className="text-sm cursor-pointer">
+          Audio
         </label>
       </div>
 
-      <div className="flex flex-row items-center gap-2">
+      {/* <div className="flex items-center gap-2">
         <input
           id="logs"
           type="checkbox"
           checked={isEventsPaneExpanded}
-          onChange={e => setIsEventsPaneExpanded(e.target.checked)}
+          onChange={(e) => setIsEventsPaneExpanded(e.target.checked)}
           className="w-4 h-4"
         />
-        <label htmlFor="logs" className="flex items-center cursor-pointer">
+        <label htmlFor="logs" className="text-sm cursor-pointer">
           Logs
         </label>
-      </div>
+      </div> */}
     </div>
   );
 }

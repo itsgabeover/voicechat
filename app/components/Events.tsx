@@ -29,7 +29,7 @@ function Events({ isExpanded }: EventsProps) {
     }
 
     setPrevEventLogs(loggedEvents);
-  }, [loggedEvents, isExpanded, prevEventLogs.length]);
+  }, [loggedEvents, isExpanded]);
 
   return (
     <div

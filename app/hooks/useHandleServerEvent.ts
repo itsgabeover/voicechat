@@ -3,36 +3,24 @@
 import { ServerEvent, SessionStatus, AgentConfig } from "@/types";
 import { useTranscript } from "@/app/contexts/TranscriptContext";
 import { useEvent } from "@/app/contexts/EventContext";
-import { useRef, useCallback } from "react";
+import { useRef } from "react";
 
 export interface UseHandleServerEventParams {
   setSessionStatus: (status: SessionStatus) => void;
   selectedAgentName: string;
   selectedAgentConfigSet: AgentConfig[] | null;
-  sendClientEvent: (
-    eventObj: Record<string, unknown>,
-    eventNameSuffix?: string
-  ) => void;
+  sendClientEvent: (eventObj: any, eventNameSuffix?: string) => void;
   setSelectedAgentName: (name: string) => void;
   shouldForceResponse?: boolean;
 }
 
-export const useHandleServerEvent = ({
+export function useHandleServerEvent({
   setSessionStatus,
   selectedAgentName,
   selectedAgentConfigSet,
   sendClientEvent,
   setSelectedAgentName,
-}: {
-  setSessionStatus: React.Dispatch<React.SetStateAction<SessionStatus>>;
-  selectedAgentName: string;
-  selectedAgentConfigSet: AgentConfig[] | null;
-  sendClientEvent: (
-    eventObj: Record<string, unknown>,
-    eventNameSuffix?: string
-  ) => void;
-  setSelectedAgentName: React.Dispatch<React.SetStateAction<string>>;
-}) => {
+}: UseHandleServerEventParams) {
   const {
     transcriptItems,
     addTranscriptBreadcrumb,
@@ -115,104 +103,98 @@ export const useHandleServerEvent = ({
     }
   };
 
-  const handleServerEvent = useCallback(
-    (serverEvent: ServerEvent) => {
-      logServerEvent({ ...serverEvent });
+  const handleServerEvent = (serverEvent: ServerEvent) => {
+    logServerEvent(serverEvent);
 
-      switch (serverEvent.type) {
-        case "session.created": {
-          if (serverEvent.session?.id) {
-            setSessionStatus("CONNECTED");
-            addTranscriptBreadcrumb(
-              `session.id: ${
-                serverEvent.session.id
-              }\nStarted at: ${new Date().toLocaleString()}`
-            );
-          }
-          break;
+    switch (serverEvent.type) {
+      case "session.created": {
+        if (serverEvent.session?.id) {
+          setSessionStatus("CONNECTED");
+          addTranscriptBreadcrumb(
+            `session.id: ${
+              serverEvent.session.id
+            }\nStarted at: ${new Date().toLocaleString()}`
+          );
         }
-
-        case "conversation.item.created": {
-          let text =
-            serverEvent.item?.content?.[0]?.text ||
-            serverEvent.item?.content?.[0]?.transcript ||
-            "";
-          const role = serverEvent.item?.role as "user" | "assistant";
-          const itemId = serverEvent.item?.id;
-
-          if (
-            itemId &&
-            transcriptItems.some((item) => item.itemId === itemId)
-          ) {
-            break;
-          }
-
-          if (itemId && role) {
-            if (role === "user" && !text) {
-              text = "[Transcribing...]";
-            }
-            addTranscriptMessage(itemId, role, text);
-          }
-          break;
-        }
-
-        case "conversation.item.input_audio_transcription.completed": {
-          const itemId = serverEvent.item_id;
-          const finalTranscript =
-            !serverEvent.transcript || serverEvent.transcript === "\n"
-              ? "[inaudible]"
-              : serverEvent.transcript;
-          if (itemId) {
-            updateTranscriptMessage(itemId, finalTranscript, false);
-          }
-          break;
-        }
-
-        case "response.audio_transcript.delta": {
-          const itemId = serverEvent.item_id;
-          const deltaText = serverEvent.delta || "";
-          if (itemId) {
-            updateTranscriptMessage(itemId, deltaText, true);
-          }
-          break;
-        }
-
-        case "response.done": {
-          if (serverEvent.response?.output) {
-            serverEvent.response.output.forEach((outputItem) => {
-              if (
-                outputItem.type === "function_call" &&
-                outputItem.name &&
-                outputItem.arguments
-              ) {
-                handleFunctionCall({
-                  name: outputItem.name,
-                  call_id: outputItem.call_id,
-                  arguments: outputItem.arguments,
-                });
-              }
-            });
-          }
-          break;
-        }
-
-        case "response.output_item.done": {
-          const itemId = serverEvent.item?.id;
-          if (itemId) {
-            updateTranscriptItemStatus(itemId, "DONE");
-          }
-          break;
-        }
-
-        default:
-          break;
+        break;
       }
-    },
-    [logServerEvent, setSessionStatus]
-  );
+
+      case "conversation.item.created": {
+        let text =
+          serverEvent.item?.content?.[0]?.text ||
+          serverEvent.item?.content?.[0]?.transcript ||
+          "";
+        const role = serverEvent.item?.role as "user" | "assistant";
+        const itemId = serverEvent.item?.id;
+
+        if (itemId && transcriptItems.some((item) => item.itemId === itemId)) {
+          break;
+        }
+
+        if (itemId && role) {
+          if (role === "user" && !text) {
+            text = "[Transcribing...]";
+          }
+          addTranscriptMessage(itemId, role, text);
+        }
+        break;
+      }
+
+      case "conversation.item.input_audio_transcription.completed": {
+        const itemId = serverEvent.item_id;
+        const finalTranscript =
+          !serverEvent.transcript || serverEvent.transcript === "\n"
+            ? "[inaudible]"
+            : serverEvent.transcript;
+        if (itemId) {
+          updateTranscriptMessage(itemId, finalTranscript, false);
+        }
+        break;
+      }
+
+      case "response.audio_transcript.delta": {
+        const itemId = serverEvent.item_id;
+        const deltaText = serverEvent.delta || "";
+        if (itemId) {
+          updateTranscriptMessage(itemId, deltaText, true);
+        }
+        break;
+      }
+
+      case "response.done": {
+        if (serverEvent.response?.output) {
+          serverEvent.response.output.forEach((outputItem) => {
+            if (
+              outputItem.type === "function_call" &&
+              outputItem.name &&
+              outputItem.arguments
+            ) {
+              handleFunctionCall({
+                name: outputItem.name,
+                call_id: outputItem.call_id,
+                arguments: outputItem.arguments,
+              });
+            }
+          });
+        }
+        break;
+      }
+
+      case "response.output_item.done": {
+        const itemId = serverEvent.item?.id;
+        if (itemId) {
+          updateTranscriptItemStatus(itemId, "DONE");
+        }
+        break;
+      }
+
+      default:
+        break;
+    }
+  };
 
   const handleServerEventRef = useRef(handleServerEvent);
   handleServerEventRef.current = handleServerEvent;
 
   return handleServerEventRef;
-};
+}

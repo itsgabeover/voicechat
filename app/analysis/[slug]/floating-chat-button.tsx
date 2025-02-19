@@ -5,7 +5,7 @@ import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ChatApp from "./chat-app";
 
-export default function FloatingChatButton() {
+export default function FloatingChatButton({ analysisResult }: { analysisResult: any }) {
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   const handleButtonClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -24,7 +24,7 @@ export default function FloatingChatButton() {
       </Button>
       {isChatOpen && (
         <div className="absolute bottom-16 right-0 w-80 h-96 bg-background border rounded-lg shadow-lg overflow-hidden">
-          <ChatApp />
+          <ChatApp analysisResult={analysisResult} />
         </div>
       )}
     </div>

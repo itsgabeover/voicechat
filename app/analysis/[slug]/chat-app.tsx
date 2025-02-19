@@ -25,7 +25,7 @@ import { createRealtimeConnection } from "@/lib/realtimeConnection";
 // Agent configs
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
 
-function ChatApp() {
+function ChatApp({ analysisResult }: { analysisResult: any }) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -87,12 +87,28 @@ function ChatApp() {
       return;
     }
 
-    const agents = allAgentSets[finalAgentConfig];
-    const agentKeyToUse = agents[0]?.name || "";
+    const agents = [...allAgentSets[finalAgentConfig]]; // Create a copy of the agents array
+    console.log("agents", agents[0].instructions);
+
+    // Create a new object for the agent with updated instructions
+    const updatedAgent = {
+      ...agents[0],
+      instructions: `Respond to user queries about their specific life insurance policy analysis: ${JSON.stringify(
+        analysisResult
+      )}`,
+    };
+
+    // Create a new array with the updated agent
+    const updatedAgents = [updatedAgent, ...agents.slice(1)];
+
+    console.log(updatedAgents[0].instructions);
+
+    const agentKeyToUse = updatedAgents[0]?.name || "";
 
     setSelectedAgentName(agentKeyToUse);
-    setSelectedAgentConfigSet(agents);
-  }, [searchParams]);
+    setSelectedAgentConfigSet(updatedAgents); // Update the state with the new agents array
+    console.log("selectedAgentConfigSet", updatedAgents[0]);
+  }, [searchParams, analysisResult]);
 
   useEffect(() => {
     if (selectedAgentName && sessionStatus === "DISCONNECTED") {
@@ -241,7 +257,9 @@ function ChatApp() {
           create_response: true,
         };
 
-    const instructions = currentAgent?.instructions || "";
+    const instructions = analysisResult
+      ? `Respond to user queries about their policy: ${analysisResult.details}`
+      : currentAgent?.instructions || "";
     const tools = currentAgent?.tools || [];
 
     const sessionUpdateEvent = {
@@ -422,64 +440,6 @@ function ChatApp() {
             Chat with your policy<span className="text-gray-500"></span>
           </div>
         </div>
-        {/* <div className="flex items-center">
-          <div className="relative inline-block">
-             <select
-              value={agentSetKey}
-              onChange={handleAgentChange}
-              className="appearance-none border border-gray-300 rounded-lg text-sm px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none hidden"
-            >
-              {Object.keys(allAgentSets).map((agentKey) => (
-                <option key={agentKey} value={agentKey}>
-                  {agentKey}
-                </option>
-              ))}
-            </select> 
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-gray-600">
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 10.44l3.71-3.21a.75.75 0 111.04 1.08l-4.25 3.65a.75.75 0 01-1.04 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-          </div>
-
-          {agentSetKey && (
-            <div className="flex items-center ml-4">
-              <label className="flex items-center text-sm gap-1 mr-2 font-medium hidden">
-                Agent
-              </label>
-              <div className="relative inline-block">
-                <select
-                  value={selectedAgentName}
-                  onChange={handleSelectedAgentChange}
-                  className="appearance-none border border-gray-300 rounded-lg text-sm px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none hidden"
-                >
-                  {selectedAgentConfigSet?.map((agent) => (
-                    <option key={agent.name} value={agent.name}>
-                      {agent.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-gray-600">
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.23 7.21a.75.75 0 011.06.02L10 10.44l3.71-3.21a.75.75 0 111.04 1.08l-4.25 3.65a.75.75 0 01-1.04 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          )}
-        </div> */}
       </div>
 
       <div className="flex flex-1 gap-2 px-2 py-2 overflow-hidden relative">

@@ -40,7 +40,7 @@ const AnalysisDetail = async (props: { params: Promise<{ slug: string }> }) => {
           <TranscriptProvider>
             <EventProvider>
               <PolicyDashboard analysis={analysis.result} />
-              <FloatingChatButton />
+              <FloatingChatButton analysisResult={analysis.result} />
             </EventProvider>
           </TranscriptProvider>
         </>
